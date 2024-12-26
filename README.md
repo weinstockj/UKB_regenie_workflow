@@ -20,6 +20,7 @@ regenie v4.0 via a docker container provided by the RGC developers.
 - `String categorical_covariate_string`: A string of categorical covariate column names.
 - `File covariates`: The covariates file.
 - `File phenotypes`: The phenotypes file.
+- `Boolean concatenate_into_parquet`: Whether to concatenate the summary statistics into a single parquet file.
 - `Int n_step1`: The number of "l0" jobs in step 1 to parallelize over. 
  
 ## Workflow Outputs
@@ -28,6 +29,11 @@ regenie v4.0 via a docker container provided by the RGC developers.
 - `Array[File] locos`: The array of LOCO files from step 1.
 - `Array[Array[File]] summary_stats`: The summary statistics files from step 2.
 - `File parquet`: The concatenated files from step2 into a single parquet file.
+
+## Dependencies
+
+This project uses [uv](https://github.com/rgcgithub/regenie/wiki/Further-parallelization-for-level-0-models-in-Step-1) for python dependencies (e.g,. `dxpy`), 
+though this not essential. 
 
 ## Contact
 Contact Josh Weinstock for details on the WDL. 

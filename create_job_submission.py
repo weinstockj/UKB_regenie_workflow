@@ -6,18 +6,19 @@ input_file=sys.argv[1]
 with open("config.yaml") as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
 
-cost_limit       = cfg["cost_limit"]
-project          = cfg["project"]
-priority         = cfg["priority"]
-step1_pvar        = cfg["step1_pvar"]
-step1_psam        = cfg["step1_psam"]
-step1_pgen        = cfg["step1_pgen"]
-step1_prefix     = cfg["step1_prefix"]
-covariates       = cfg["covariates"]
-phenotypes       = cfg["phenotypes"]
-covariate_string = cfg["covariate_string"]
+cost_limit                   = cfg["cost_limit"]
+project                      = cfg["project"]
+priority                     = cfg["priority"]
+step1_pvar                   = cfg["step1_pvar"]
+step1_psam                   = cfg["step1_psam"]
+step1_pgen                   = cfg["step1_pgen"]
+step1_prefix                 = cfg["step1_prefix"]
+covariates                   = cfg["covariates"]
+phenotypes                   = cfg["phenotypes"]
+covariate_string             = cfg["covariate_string"]
 categorical_covariate_string = cfg["categorical_covariate_string"]
-final_folder     = cfg["final_folder"]
+final_folder                 = cfg["final_folder"]
+concatenate                  = cfg["concatenate"]
 
 def _parse_dx_delim(delim_line):
 
@@ -53,6 +54,7 @@ if __name__ == '__main__':
      -istage-common.covariates="{covariates}" \
      -istage-common.categorical_covariate_string="{categorical_covariate_string}" \
      -istage-common.phenotypes="{phenotypes}" \
+     -istage-common.concatenate_into_parquet="{concatenate}" \
      --folder="{final_folder}" \
      --tag "regenie" \
      --priority {priority} \
@@ -68,6 +70,7 @@ if __name__ == '__main__':
                  categorical_covariate_string=categorical_covariate_string,
                  covariates=covariates,
                  phenotypes=phenotypes,
+                 concatenate=concatenate,
                  final_folder= final_folder,
                  priority = priority,
                  cost = cost_limit,
