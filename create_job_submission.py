@@ -2,8 +2,9 @@ import sys
 import yaml
 
 input_file=sys.argv[1]
+config_file = sys.argv[2]
 
-with open("config.yaml") as f:
+with open(config_file) as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
 
 cost_limit                   = cfg["cost_limit"]
@@ -19,6 +20,8 @@ covariate_string             = cfg["covariate_string"]
 categorical_covariate_string = cfg["categorical_covariate_string"]
 final_folder                 = cfg["final_folder"]
 concatenate                  = cfg["concatenate"]
+workflow                     = cfg["workflow"]
+minMAC                       = cfg["minMAC"]
 
 def _parse_dx_delim(delim_line):
 
@@ -45,7 +48,7 @@ if __name__ == '__main__':
             )
 
 
-    print('uv run dx run /workflows/regenie {batch_input_files} \
+    print('uv run dx run {workflow} {batch_input_files} \
      -istage-common.step1_pvar={step1_pvar} \
      -istage-common.step1_pgen={step1_pgen} \
      -istage-common.step1_psam={step1_psam} \
@@ -55,12 +58,14 @@ if __name__ == '__main__':
      -istage-common.categorical_covariate_string="{categorical_covariate_string}" \
      -istage-common.phenotypes="{phenotypes}" \
      -istage-common.concatenate_into_parquet="{concatenate}" \
+     -istage-common.minMAC="{minMAC}" \
      --folder="{final_folder}" \
      --tag "regenie" \
      --priority {priority} \
      --cost-limit {cost} \
      -y \
      --brief'.format(
+                 workflow = workflow,
                  batch_input_files=batch_input_files,
                  step1_pvar=step1_pvar,
                  step1_pgen=step1_pgen,
@@ -70,6 +75,7 @@ if __name__ == '__main__':
                  categorical_covariate_string=categorical_covariate_string,
                  covariates=covariates,
                  phenotypes=phenotypes,
+                 minMAC = minMAC,
                  concatenate=concatenate,
                  final_folder= final_folder,
                  priority = priority,

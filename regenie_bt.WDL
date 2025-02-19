@@ -1,5 +1,5 @@
 version 1.0
-workflow regenie {
+workflow regenie_bt {
 
     input {
 
@@ -405,11 +405,11 @@ task concatenate {
             ln -s ${l} . 
         done
 
-        duckdb -c "COPY 
-         (SELECT 
-             CHROM, 
-             GENPOS AS POS,  
-             concat_ws('-', CHROM, GENPOS, ALLELE0, ALLELE1) AS ID,
+        duckdb -c "COPY
+         (SELECT
+             concat('chr', CHROM) AS CHROM,
+             GENPOS AS POS,
+             concat_ws('-', concat('chr', CHROM), GENPOS, ALLELE0, ALLELE1) AS ID,
              ALLELE0,
              ALLELE1,
              A1FREQ,
@@ -421,9 +421,9 @@ task concatenate {
              BETA,
              SE,
              CHISQ,
-             LOG10P 
-             split_part(split_part(filename, '_', 3), '.', 1) AS phenotype 
-         FROM read_csv('*.gz', sep = ' ', filename = true)) 
+             LOG10P,
+             replace(split_part(filename, '_', 3), '.regenie.gz', '') AS phenotype
+         FROM read_csv('*.gz', sep = ' ', filename = true))
          TO 'concatenated_results.parquet' (FORMAT PARQUET) "
     >>>
 
