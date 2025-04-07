@@ -7,16 +7,12 @@ workflow regenie_qt {
         File step1_psam
         File step1_pgen
         String step1_prefix
-        Array[File] pvar
-        Array[File] psam
-        Array[File] pgen
-        Array[String] step2_prefix
+        File step2_chunk_manifest
         String covariate_string
         String categorical_covariate_string
         File covariates
         File phenotypes
         Int n_step1 = 16
-        Int n_step2 = 22
         Int minMAC = 10
         Int threads = 8 
         Int step1_block_size = 500
@@ -25,6 +21,9 @@ workflow regenie_qt {
         Boolean fix_step2_header_for_rap = true
     }
 
+    Array[Array[String]] step2_chunks = read_tsv(step2_chunk_manifest)
+    Int n_step2 = length(step2_chunks) - 1
+    
     call step1_split_l0 {
 
         input:
@@ -84,10 +83,11 @@ workflow regenie_qt {
         call step2 {
 
             input:
-                psam = psam[i],
-                pvar = pvar[i],
-                pgen = pgen[i],
-                plink2_prefix = step2_prefix[i],
+                pvar = "dx://" + step2_chunks[i][7], # 0-based index
+                psam = "dx://" + step2_chunks[i][8], # 0-based index
+                pgen = "dx://" + step2_chunks[i][9], # 0-based index
+                plink2_prefix = basename(step2_chunks[i][4], ".pvar"),
+                range = step2_chunks[i][3], # 0-based index
                 out_prefix = "chunk_~{i + 1}",
                 locos = step1_run_l1.locos,
                 loco_list = step1_run_l1.loco_list,
@@ -323,6 +323,7 @@ task step2 {
         File pvar
         File pgen
         String plink2_prefix
+        String range
         String covariate_string
         String categorical_covariate_string
         File covariates
@@ -380,6 +381,7 @@ task step2 {
           --covarColList ~{covariate_string} \
           --catCovarList ~{categorical_covariate_string} \
           --phenoFile ~{phenotypes} \
+          --range ~{range} \
           --bsize ~{bsize} \
           --qt \
           --apply-rint \
@@ -398,7 +400,7 @@ task step2 {
 
     runtime {
         docker: "ghcr.io/rgcgithub/regenie/regenie:v4.1.gz"
-        dx_instance_type: "mem3_ssd1_v2_x8"
+        dx_instance_type: "mem2_ssd1_v2_x8"
     }
 
     parameter_meta {
