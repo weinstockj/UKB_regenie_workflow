@@ -1,8 +1,7 @@
 import sys
 import yaml
 
-input_file=sys.argv[1]
-config_file = sys.argv[2]
+config_file = sys.argv[1]
 
 with open(config_file) as f:
     cfg = yaml.load(f, Loader=yaml.FullLoader)
@@ -20,35 +19,16 @@ covariate_string             = cfg["covariate_string"]
 categorical_covariate_string = cfg["categorical_covariate_string"]
 final_folder                 = cfg["final_folder"]
 concatenate                  = cfg["concatenate"]
+fix_step2_header_for_rap     = cfg["fix_step2_header_for_rap"]
 workflow                     = cfg["workflow"]
+step2_block_size             = cfg["step2_block_size"]
 minMAC                       = cfg["minMAC"]
-
-def _parse_dx_delim(delim_line):
-
-    chrom = delim_line[0]
-    pvar = delim_line[2]
-    psam = delim_line[4]
-    pgen = delim_line[6]
-    return chrom, pvar, psam, pgen
+step2_chunk_manifest         = cfg["step2_chunk_manifest"]
+plink2_binary                = cfg["plink2_binary"]
 
 if __name__ == '__main__':
 
-    fd=open(input_file)
-    lines=fd.readlines()
-    chr_number=len(lines)
-    batch_input_files=''
-    for i in range(chr_number):
-        delim_line = lines[i].strip().split('\t')
-        chrom, pvar, psam, pgen = _parse_dx_delim(delim_line)
-        batch_input_files += '-istage-common.pvar={pvar} -istage-common.psam={psam} -istage-common.pgen={pgen} -istage-common.step2_prefix={chrom} '.format(
-                pvar = pvar, 
-                psam = psam, 
-                pgen = pgen, 
-                chrom = chrom
-            )
-
-
-    print('uv run dx run {workflow} {batch_input_files} \
+    print('uv run dx run {workflow} \
      -istage-common.step1_pvar={step1_pvar} \
      -istage-common.step1_pgen={step1_pgen} \
      -istage-common.step1_psam={step1_psam} \
@@ -59,6 +39,10 @@ if __name__ == '__main__':
      -istage-common.phenotypes="{phenotypes}" \
      -istage-common.concatenate_into_parquet="{concatenate}" \
      -istage-common.minMAC="{minMAC}" \
+     -istage-common.step2_chunk_manifest="{step2_chunk_manifest}" \
+     -istage-common.step2_block_size="{step2_block_size}" \
+     -istage-common.fix_step2_header_for_rap="{fix_step2_header_for_rap}" \
+     -istage-common.plink2_binary="{plink2_binary}" \
      --folder="{final_folder}" \
      --tag "regenie" \
      --priority {priority} \
@@ -66,7 +50,6 @@ if __name__ == '__main__':
      -y \
      --brief'.format(
                  workflow = workflow,
-                 batch_input_files=batch_input_files,
                  step1_pvar=step1_pvar,
                  step1_pgen=step1_pgen,
                  step1_psam=step1_psam,
@@ -76,7 +59,11 @@ if __name__ == '__main__':
                  covariates=covariates,
                  phenotypes=phenotypes,
                  minMAC = minMAC,
+                 step2_block_size = step2_block_size,
+                 step2_chunk_manifest = step2_chunk_manifest,
                  concatenate=concatenate,
+                 fix_step2_header_for_rap=fix_step2_header_for_rap,
+                 plink2_binary=plink2_binary,
                  final_folder= final_folder,
                  priority = priority,
                  cost = cost_limit,
