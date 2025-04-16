@@ -12,12 +12,10 @@ regenie v4.1 via a docker container provided by the RGC developers.
 - `File step1_psam`: The psam file for step 1.
 - `File step1_pgen`: The pgen file for step 1.
 - `String step1_prefix`: The prefix for step 1 output files.
-- `Array[File] pvar`: An array of pvar files for step 2.
-- `Array[File] psam`: An array of psam files for step 2.
-- `Array[File] pgen`: An array of pgen files for step 2.
 - `File step2_chunk_manifest`: The manifest file for step 2. This is a list of the pvar, psam and pgen files for step 2. See below for details.
 - `String covariate_string`: A string of covariate column names.
 - `String categorical_covariate_string`: A string of categorical covariate column names.
+- `File plink2_binary`: The plink2 binary. This is used to filter variants in step2. 
 - `File covariates`: The covariates file.
 - `File phenotypes`: The phenotypes file.
 - `Boolean concatenate_into_parquet`: Whether to concatenate the summary statistics into a single parquet file.
