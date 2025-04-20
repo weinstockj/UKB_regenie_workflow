@@ -7,22 +7,23 @@ workflow regenie_bt {
         File step1_psam
         File step1_pgen
         String step1_prefix
-        Array[File] pvar
-        Array[File] psam
-        Array[File] pgen
-        Array[String] step2_prefix
+        File step2_chunk_manifest
         String covariate_string
         String categorical_covariate_string
         File covariates
         File phenotypes
+        File plink2_binary
         Int n_step1 = 16
-        Int n_step2 = 22
         Int minMAC = 10
         Int threads = 8 
         Int step1_block_size = 500
         Int step2_block_size = 250
         Boolean concatenate_into_parquet = false
+        Boolean fix_step2_header_for_rap = true
     }
+
+    Array[Array[String]] step2_chunks = read_tsv(step2_chunk_manifest)
+    Int n_step2 = length(step2_chunks) - 1
 
     call step1_split_l0 {
 
@@ -83,10 +84,15 @@ workflow regenie_bt {
         call step2 {
 
             input:
-                psam = psam[i],
-                pvar = pvar[i],
-                pgen = pgen[i],
-                plink2_prefix = step2_prefix[i],
+                pvar = "dx://" + step2_chunks[i][7], # 0-based index
+                psam = "dx://" + step2_chunks[i][8], # 0-based index
+                pgen = "dx://" + step2_chunks[i][9], # 0-based index
+                plink2_prefix = basename(step2_chunks[i][4], ".pvar"),
+                plink2_binary = plink2_binary,
+                chrom = sub(step2_chunks[i][0], "chr", ""), # 0-based index
+                start = step2_chunks[i][1], # 0-based index
+                end = step2_chunks[i][2], # 0-based index
+                range = step2_chunks[i][3], # 0-based index
                 out_prefix = "chunk_~{i + 1}",
                 locos = step1_run_l1.locos,
                 loco_list = step1_run_l1.loco_list,
@@ -96,6 +102,7 @@ workflow regenie_bt {
                 bsize = step2_block_size,
                 minMAC = minMAC,
                 threads = threads,
+                fix_step2_header_for_rap = fix_step2_header_for_rap,
                 phenotypes = phenotypes
         }
     }
@@ -301,7 +308,7 @@ task step1_run_l1 {
     >>>
 
     runtime {
-        docker: "ghcr.io/rgcgithub/regenie/regenie:v4.0.gz"
+        docker: "ghcr.io/rgcgithub/regenie/regenie:v4.1.gz"
         dx_instance_type: "mem2_ssd1_v2_x8"
     }
 
@@ -320,16 +327,22 @@ task step2 {
         File pvar
         File pgen
         String plink2_prefix
+        String range
         String covariate_string
         String categorical_covariate_string
         File covariates
         File phenotypes
+        File plink2_binary
         Array[File] locos
         File loco_list
         String out_prefix
+        String start # can't coerce to Int
+        String end # can't coerce to Int
+        String chrom
         Int bsize
         Int minMAC
         Int threads
+        Boolean fix_step2_header_for_rap
     }
 
     command <<<
@@ -340,25 +353,58 @@ task step2 {
         ln -s ~{pvar} ~{plink2_prefix}.pvar
         ln -s ~{pgen} ~{plink2_prefix}.pgen
 
-        echo "$(date -u) Fixing psam header now"
-        head  ~{plink2_prefix}.psam
+        if [[ "~{fix_step2_header_for_rap}" == "true" ]]; then
+            echo "$(date -u) Fixing psam header now for RAP files; here's the original psam:"
+            head  ~{plink2_prefix}.psam
 
-        awk 'NR==1 {print "#FID IID sex"; next} {print $1, $1, $2}' ~{plink2_prefix}.psam > tmp.psam
+            awk 'NR==1 {print "#FID IID SEX"; print $1, $1, $5; next} {print $1, $1, $5}' ~{plink2_prefix}.psam > tmp.psam
 
-        mv ~{plink2_prefix}.psam ~{plink2_prefix}.psam.old
-        mv tmp.psam ~{plink2_prefix}.psam
+            mv ~{plink2_prefix}.psam ~{plink2_prefix}.psam.old
+            mv tmp.psam ~{plink2_prefix}.psam
 
-        head  ~{plink2_prefix}.psam
-        echo "$(date -u) Done fixing psam header now"
+            echo "$(date -u) Done fixing psam header now: "
+            head  ~{plink2_prefix}.psam
+        else
+            echo "$(date -u) Fixing psam header now; here's the original psam:"
+            head  ~{plink2_prefix}.psam
+
+            awk 'NR==1 {print "#FID IID SEX"; next} {print $1, $1, $2}' ~{plink2_prefix}.psam > tmp.psam
+
+            mv ~{plink2_prefix}.psam ~{plink2_prefix}.psam.old
+            mv tmp.psam ~{plink2_prefix}.psam
+
+            echo "$(date -u) Done fixing psam header now:"
+            head  ~{plink2_prefix}.psam
+        fi
 
         for loco in ~{sep=' ' locos}; do 
             echo $loco
             ln -s ${loco} .
         done
 
+        # filter with plink2 from streaming pgen file dxfuse
+        # should be faster than filtering on the fly with regenie
+        echo "$(date -u) Now filtering with plink2"
+
+        apt-get update
+        apt-get install unzip
+
+        unzip ~{plink2_binary}  
+
+        ./plink2 --pfile ~{plink2_prefix} \
+            --from-bp ~{start} \
+            --to-bp ~{end} \
+            --chr ~{chrom} \ 
+            --mac ~{minMAC} \
+            --make-pgen \
+            --out ~{plink2_prefix}.filtered
+
+        ls -alh 
+        echo "$(date -u) Done filtering with plink2; now running regenie"
+
         regenie \
           --step 2 \
-          --pgen ~{plink2_prefix} \
+          --pgen ~{plink2_prefix}.filtered \
           --covarFile ~{covariates} \
           --covarColList ~{covariate_string} \
           --catCovarList ~{categorical_covariate_string} \
@@ -371,19 +417,35 @@ task step2 {
           --pred ~{loco_list} \
           --af-cc \
           --gz \
-          --threads ~{threads} \
-          --minMAC ~{minMAC} \
           --out ~{out_prefix}
 
-        ls -alh out/
+        ls -alh '~{out_prefix}*'
         ls -alh
 
         echo "$(date -u) Done now"
     >>>
 
     runtime {
-        docker: "ghcr.io/rgcgithub/regenie/regenie:v4.0.gz"
+        docker: "ghcr.io/rgcgithub/regenie/regenie:v4.1.gz"
         dx_instance_type: "mem2_ssd1_v2_x8"
+    }
+
+    parameter_meta {
+        pgen: {
+            description: "input pgen",
+            patterns: ["*.pgen"],
+            stream: true
+        }
+        pvar: {
+            description: "input pvar",
+            patterns: ["*.pvar"],
+            stream: true
+        }
+        psam: {
+            description: "input psam",
+            patterns: ["*.psam"],
+            stream: true
+        }
     }
 
     output {

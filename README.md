@@ -1,26 +1,39 @@
 
 # Regenie WDL Workflow
 
-This WDL workflow runs [regenie](https://rgcgithub.github.io/regenie/) for GWAS/RVAS. This has been tested on the UKB RAP, but not elsewhere. 
+This WDL workflow runs [regenie](https://rgcgithub.github.io/regenie/) for GWAS/RVAS. This has been tested on the UKB RAP, but not elsewhere.
 
 This WDL parallelizes step 1 using the instructions [here](https://github.com/rgcgithub/regenie/wiki/Further-parallelization-for-level-0-models-in-Step-1). It calls 
-regenie v4.1 via a docker container provided by the RGC developers. 
+regenie v4.1 via a docker container provided by the RGC developers.
+
+## Available Workflows
+
+- `regenie_qt.WDL`: Workflow for quantitative traits
+- `regenie_bt.WDL`: Workflow for binary traits
+
+Both workflows share the same structure and inputs, using a manifest file for step 2 chunks and plink2 filtering.
 
 ## Workflow Inputs
+
+Both workflows (regenie_qt.WDL and regenie_bt.WDL) share the same input parameters:
 
 - `File step1_pvar`: The pvar file for step 1. Presumably, based on array genotypes have been filtered for MAF, HWE, missingness and LD pruned. 
 - `File step1_psam`: The psam file for step 1.
 - `File step1_pgen`: The pgen file for step 1.
 - `String step1_prefix`: The prefix for step 1 output files.
-- `File step2_chunk_manifest`: The manifest file for step 2. This is a list of the pvar, psam and pgen files for step 2. See below for details.
+- `File step2_chunk_manifest`: The manifest file for step 2. This is a TSV listing chromosome regions and their corresponding pvar, psam, and pgen files. See below for details.
 - `String covariate_string`: A string of covariate column names.
 - `String categorical_covariate_string`: A string of categorical covariate column names.
-- `File plink2_binary`: The plink2 binary. This is used to filter variants in step2. 
+- `File plink2_binary`: The plink2 binary file (zip archive). This is used to filter variants in step2 for improved performance.
 - `File covariates`: The covariates file.
 - `File phenotypes`: The phenotypes file.
 - `Boolean concatenate_into_parquet`: Whether to concatenate the summary statistics into a single parquet file.
-- `Int n_step1`: The number of "l0" jobs in step 1 to parallelize over. 
-- `fix_step2_header_for_rap`: The plink2 psam files from UKB RAP are missing a header. This is a workaround to fix this.
+- `Int n_step1`: The number of "l0" jobs in step 1 to parallelize over.
+- `Boolean fix_step2_header_for_rap`: The plink2 psam files from UKB RAP may have formatting issues. Setting this to true applies a workaround to fix the header.
+- `Int minMAC`: The minimum minor allele count for variants in step 2 (default: 10).
+- `Int threads`: Number of threads to use for computation (default: 8).
+- `Int step1_block_size`: Block size for step 1 (default: 500).
+- `Int step2_block_size`: Block size for step 2 (default: 250).
 
 
 ### Step2 chunk manifest
@@ -55,6 +68,6 @@ though this not essential.
 
 ## Contact
 Contact Josh Weinstock for details on the WDL. 
-Note, this repo has no affiliation with the Regenie developers. 
+Note, this repo has no affiliation with the REGENIE developers; please contact them for questions about REGENIE itself.
 
 If you use this, please credit the regenie developers. 
