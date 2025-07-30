@@ -485,7 +485,13 @@ task concatenate {
              CHISQ,
              LOG10P,
              replace(split_part(filename, '_', 3), '.regenie.gz', '') AS phenotype
-         FROM read_csv('*.gz', sep = ' ', filename = true))
+             FROM read_csv('*.gz', 
+                sep = ' ',
+                filename = true,
+                types={'ALLELE0': 'VARCHAR', 'ALLELE1' : 'VARCHAR'},
+                ignore_errors = true
+            )
+         )
          TO 'concatenated_results.parquet' (FORMAT PARQUET) "
     >>>
 

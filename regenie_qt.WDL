@@ -173,7 +173,7 @@ task step1_split_l0 {
     >>>
 
     runtime {
-        docker: "ghcr.io/rgcgithub/regenie/regenie:v4.0.gz"
+        docker: "ghcr.io/rgcgithub/regenie/regenie:v4.1.gz"
         dx_instance_type: "mem2_ssd1_v2_x4"
     }
 
@@ -220,6 +220,8 @@ task step1_run_l0 {
 
         regenie --step 1 \
           --qt \
+          --apply-rint \
+          --force-qt \
           --loocv \
           --covarFile ~{covariates} \
           --covarColList ~{covariate_string} \
@@ -237,7 +239,7 @@ task step1_run_l0 {
     >>>
 
     runtime {
-        docker: "ghcr.io/rgcgithub/regenie/regenie:v4.0.gz"
+        docker: "ghcr.io/rgcgithub/regenie/regenie:v4.1.gz"
         dx_instance_type: "mem2_ssd1_v2_x8"
     }
 
@@ -292,6 +294,8 @@ task step1_run_l1 {
           --catCovarList ~{categorical_covariate_string} \
           --phenoFile ~{phenotypes} \
           --bsize ~{bsize} \
+          --force-qt \
+          --apply-rint \
           --gz \
           --pgen ~{plink2_prefix} \
           --threads ~{threads} \
@@ -413,6 +417,7 @@ task step2 {
           --bsize ~{bsize} \
           --qt \
           --apply-rint \
+          --force-qt \
           --threads ~{threads} \
           --pred ~{loco_list} \
           --gz \
@@ -458,6 +463,7 @@ task concatenate {
     
     input {
         Array[File] summary_stats
+        Int split_part_index = 3
     }
 
     command <<<
@@ -479,8 +485,14 @@ task concatenate {
              SE,
              CHISQ,
              LOG10P,
-             split_part(split_part(filename, '_', 3), '.', 1) AS phenotype
-         FROM read_csv('*.gz', sep = ' ', filename = true))
+             split_part(split_part(filename, '_', ~{split_part_index}), '.', 1) AS phenotype
+             FROM read_csv('*.gz', 
+                sep = ' ',
+                filename = true,
+                types={'ALLELE0': 'VARCHAR', 'ALLELE1' : 'VARCHAR'},
+                ignore_errors = true
+            )
+         )
          TO 'concatenated_results.parquet' (FORMAT PARQUET) "
     >>>
 
